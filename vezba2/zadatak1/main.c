@@ -1,38 +1,40 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
-
-unsigned char ledovka = 0;
-unsigned char t0_cnt = 0;
+//treptanje f=2Hz
+unsigned long miliseconds=0;
 
 ISR(TIMER0_COMPA_vect)
 {
-	t0_cnt++;
+	miliseconds++;
 }
 
+unsigned char my_delay(unsigned long miliseconds) {
+	if (miliseconds == 500) {
+		PORTB ^= 1<<5 ; //xor, invertuje stalno PB5
+		return 1;
+	}
+	return 0;
+}
 
-int main(){
-	DDRB |= 1 << 5;
+int main(void)
+{
+	//inicijalizacija tajmera 0:
+	TCCR0A = 0x02; // CTC mod
+	TCCR0B = 0x03; // fclk = fosc/64
+	OCR0A = 249; //perioda tajmera 0: 250 Tclk (OCR0A + 1 = 250)
+	TIMSK0 = 0x02; //dozvola prekida tajmera 0
+	//usled dostizanja vrednosti registra OCR0A
 
-	TCCR0A = 0x02;
-	TCCR0B = 0x03;
-	OCR0A = 249;
+	sei(); //I = 1 (dozvola prekida)
 
-	TIMSK0 = 0x02;
-	sei();
+	DDRB |= 1 << 5; //PB5 je izlaz za diodu
+	PORTB |= 1<<5; //setovanje diode na 1 (led ON)
 
-
-	while(1)
-	{
-	    if(t0_cnt == 125)
-	    {
-	    	t0_cnt = 0;
-	    	ledovka ^= (1 << 5);
-	    	PORTB = ledovka;
-	    }
-
-
-	};
-
-return 0;
-
+	while(1) {
+		if (my_delay(miliseconds)== 1) {
+			//ako je vracena 1, znaci da treba resetovati milisekunde
+			miliseconds=0;
+		}
+	}
+	return 0;
 }
